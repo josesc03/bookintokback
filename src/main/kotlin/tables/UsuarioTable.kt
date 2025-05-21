@@ -1,7 +1,9 @@
 package tables
 
 import org.jetbrains.exposed.sql.Table
-import org.jetbrains.exposed.sql.javatime.datetime
+import org.jetbrains.exposed.sql.javatime.timestamp
+import java.time.Instant
+import kotlin.time.ExperimentalTime
 
 object UsuarioTable : Table("usuario") {
     val id = integer("id").autoIncrement()
@@ -13,7 +15,9 @@ object UsuarioTable : Table("usuario") {
     val ultimaLongitud = decimal("ultima_longitud", 9, 6).nullable()  // Cambiado de varchar a double
     val valoracionPromedio = decimal("valoracion_promedio", 3, 2).nullable()  // Cambiado de varchar a double
     val imagenUrl = varchar("imagen_url", 255).nullable()
-    val fechaRegistro = datetime("fecha_registro")
+
+    @OptIn(ExperimentalTime::class)
+    val fechaRegistro = timestamp("fecha_registro").clientDefault { Instant.now() }
 
     override val primaryKey = PrimaryKey(id, name = "PK_Id")
 }

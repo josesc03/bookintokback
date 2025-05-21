@@ -5,23 +5,25 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import tables.UsuarioTable
+import java.time.Instant
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 object UsuarioService {
 
     @OptIn(ExperimentalTime::class)
-    fun createUser(firebaseUid: String, nickname: String, nombre: String, email: String): Usuario {
+    fun createUser(firebaseUid: String, nickname: String, email: String): Usuario {
+        println("Creando usuario $nickname $email")
         return transaction {
             val id = UsuarioTable.insert {
                 it[UsuarioTable.firebaseUid] = firebaseUid
                 it[UsuarioTable.nickname] = nickname
-                it[UsuarioTable.nombre] = nombre
+                it[UsuarioTable.nombre] = nickname
                 it[UsuarioTable.email] = email
-                it[UsuarioTable.fechaRegistro] = java.time.LocalDateTime.now()
+                it[UsuarioTable.fechaRegistro] = Instant.now()
             } get UsuarioTable.id
 
-            getUserById(id)!!
+            Usuario(id, firebaseUid, nickname, nickname, email, null, null, null, null, Instant.now())
+
         }
     }
 
@@ -52,24 +54,18 @@ object UsuarioService {
         }
     }
 
-    fun updateUserLocation(id: Int, firebaseUid: String, latitud: Double, longitud: Double): Usuario? {
+    fun updateUserLocationByUid(
+        firebaseUid: String,
+        latitud: Double,
+        longitud: Double
+    ): Boolean? {
         return transaction {
-            // Verificar que el usuario existe y pertenece al usuario autenticado
-            UsuarioTable.select {
-                (UsuarioTable.id eq id) and (UsuarioTable.firebaseUid eq firebaseUid)
-            }.singleOrNull() ?: return@transaction null
-
-            // Actualizar ubicación
-            val updateStatement = UsuarioTable.update({ UsuarioTable.id eq id }) { table ->
-                table[ultimaLatitud] = latitud.toBigDecimal()
-                table[ultimaLongitud] = longitud.toBigDecimal()
+            val filaActualizada = UsuarioTable.update({ UsuarioTable.firebaseUid eq firebaseUid }) {
+                it[UsuarioTable.ultimaLongitud] = longitud.toBigDecimal()
+                it[UsuarioTable.ultimaLatitud] = latitud.toBigDecimal()
             }
 
-            if (updateStatement > 0) {
-                getUserById(id)
-            } else {
-                null
-            }
+            return@transaction if (filaActualizada > 0) true else null
         }
     }
 
@@ -98,24 +94,55 @@ object UsuarioService {
 
     @OptIn(ExperimentalTime::class)
     fun getUserByFirebaseUid(firebaseUid: String): Usuario? {
-        return transaction {
-            UsuarioTable.select { UsuarioTable.firebaseUid eq firebaseUid }
-                .singleOrNull()
-                ?.let { row ->
-                    Usuario(
-                        id = row[UsuarioTable.id],
-                        firebaseUid = row[UsuarioTable.firebaseUid],
-                        nickname = row[UsuarioTable.nickname],
-                        nombre = row[UsuarioTable.nombre],
-                        email = row[UsuarioTable.email],
-                        imagenUrl = row[UsuarioTable.imagenUrl],
-                        ultimaLatitud = row[UsuarioTable.ultimaLatitud],
-                        ultimaLongitud = row[UsuarioTable.ultimaLongitud],
-                        valoracionPromedio = row[UsuarioTable.valoracionPromedio],
-                        fechaRegistro = Instant.parse(row[UsuarioTable.fechaRegistro].toString())
-                    )
-                }
+        println("Iniciando sesion con UID")
+        return try {
+            transaction {
+                UsuarioTable.select { UsuarioTable.firebaseUid eq firebaseUid }
+                    .singleOrNull()
+                    ?.let { row ->
+                        Usuario(
+                            id = row[UsuarioTable.id],
+                            firebaseUid = row[UsuarioTable.firebaseUid],
+                            nickname = row[UsuarioTable.nickname],
+                            nombre = row[UsuarioTable.nombre],
+                            email = row[UsuarioTable.email],
+                            imagenUrl = row[UsuarioTable.imagenUrl],
+                            ultimaLatitud = row[UsuarioTable.ultimaLatitud],
+                            ultimaLongitud = row[UsuarioTable.ultimaLongitud],
+                            valoracionPromedio = row[UsuarioTable.valoracionPromedio],
+                            fechaRegistro = Instant.parse(row[UsuarioTable.fechaRegistro].toString())
+                        )
+                    }
+            }
+        } catch (e: Exception) {
+            println("Error al buscar usuario por firebaseUid: ${e.message}")
+            null
         }
     }
 
+    fun getUserByEmail(email: String): Usuario? {
+        return try {
+            transaction {
+                UsuarioTable.select { UsuarioTable.email eq email }
+                    .singleOrNull()
+                    ?.let { row ->
+                        Usuario(
+                            id = row[UsuarioTable.id],
+                            firebaseUid = row[UsuarioTable.firebaseUid],
+                            nickname = row[UsuarioTable.nickname],
+                            nombre = row[UsuarioTable.nombre],
+                            email = row[UsuarioTable.email],
+                            imagenUrl = row[UsuarioTable.imagenUrl],
+                            ultimaLatitud = row[UsuarioTable.ultimaLatitud],
+                            ultimaLongitud = row[UsuarioTable.ultimaLongitud],
+                            valoracionPromedio = row[UsuarioTable.valoracionPromedio],
+                            fechaRegistro = Instant.parse(row[UsuarioTable.fechaRegistro].toString())
+                        )
+                    }
+            }
+        } catch (e: Exception) {
+            println("Error al buscar usuario por email: ${e.message}")
+            null
+        }
+    }
 }

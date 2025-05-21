@@ -12,8 +12,8 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import tables.ChatTable
 import tables.IntercambioTable
 import tables.MensajeTable
+import java.time.Instant
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 object MensajeService {
     fun enviarMensaje(

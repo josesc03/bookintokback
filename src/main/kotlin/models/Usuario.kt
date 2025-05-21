@@ -5,7 +5,6 @@ import utils.BigDecimalSerializer
 import utils.InstantSerializer
 import java.math.BigDecimal
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 @Serializable
 data class Usuario @OptIn(ExperimentalTime::class) constructor(
@@ -22,5 +21,5 @@ data class Usuario @OptIn(ExperimentalTime::class) constructor(
     @Serializable(with = BigDecimalSerializer::class)
     val valoracionPromedio: BigDecimal?,
     @Serializable(with = InstantSerializer::class)
-    val fechaRegistro: Instant
+    val fechaRegistro: java.time.Instant
 )

@@ -2,8 +2,8 @@ package models
 
 import kotlinx.serialization.Serializable
 import utils.InstantSerializer
+import java.time.Instant
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 @Serializable
 data class Mensaje @OptIn(ExperimentalTime::class) constructor(
