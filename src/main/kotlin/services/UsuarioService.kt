@@ -11,32 +11,32 @@ import kotlin.time.ExperimentalTime
 object UsuarioService {
 
     @OptIn(ExperimentalTime::class)
-    fun createUser(firebaseUid: String, nickname: String, email: String): Usuario {
+    fun createUser(uid: String, nickname: String, email: String): Usuario {
         println("Creando usuario $nickname $email")
         return transaction {
-            val id = UsuarioTable.insert {
-                it[UsuarioTable.firebaseUid] = firebaseUid
+            UsuarioTable.insert {
+                it[UsuarioTable.uid] = uid
                 it[UsuarioTable.nickname] = nickname
                 it[UsuarioTable.nombre] = nickname
                 it[UsuarioTable.email] = email
                 it[UsuarioTable.fechaRegistro] = Instant.now()
-            } get UsuarioTable.id
+            } get UsuarioTable.uid
 
-            Usuario(id, firebaseUid, nickname, nickname, email, null, null, null, null, Instant.now())
+            Usuario(uid, nickname, nickname, email, null, null, null, null, Instant.now())
 
         }
     }
 
 
-    fun updateUser(id: Int, firebaseUid: String, updateData: Map<String, Any?>): Usuario? {
+    fun updateUser(uid: String, updateData: Map<String, Any?>): Usuario? {
         return transaction {
             // Verificar que el usuario existe y pertenece al usuario autenticado
             UsuarioTable.select {
-                (UsuarioTable.id eq id) and (UsuarioTable.firebaseUid eq firebaseUid)
+                (UsuarioTable.uid eq uid) and (UsuarioTable.uid eq uid)
             }.singleOrNull() ?: return@transaction null
 
             // Preparar la actualización
-            val updateStatement = UsuarioTable.update({ UsuarioTable.id eq id }) { table ->
+            val updateStatement = UsuarioTable.update({ UsuarioTable.uid eq uid }) { table ->
                 updateData.forEach { (key, value) ->
                     when (key) {
                         "nickname" -> table[nickname] = value as String
@@ -47,7 +47,7 @@ object UsuarioService {
             }
 
             if (updateStatement > 0) {
-                getUserById(id)
+                getUserByUid(id)
             } else {
                 null
             }
@@ -55,12 +55,12 @@ object UsuarioService {
     }
 
     fun updateUserLocationByUid(
-        firebaseUid: String,
+        uid: String,
         latitud: Double,
         longitud: Double
     ): Boolean? {
         return transaction {
-            val filaActualizada = UsuarioTable.update({ UsuarioTable.firebaseUid eq firebaseUid }) {
+            val filaActualizada = UsuarioTable.update({ UsuarioTable.uid eq uid }) {
                 it[UsuarioTable.ultimaLongitud] = longitud.toBigDecimal()
                 it[UsuarioTable.ultimaLatitud] = latitud.toBigDecimal()
             }
@@ -69,40 +69,16 @@ object UsuarioService {
         }
     }
 
-    // Asegúrate de actualizar también la función getUserById para incluir el nuevo campo
     @OptIn(ExperimentalTime::class)
-    fun getUserById(id: Int): Usuario? {
-        return transaction {
-            UsuarioTable.select { UsuarioTable.id eq id }
-                .singleOrNull()
-                ?.let { row ->
-                    Usuario(
-                        id = row[UsuarioTable.id],
-                        firebaseUid = row[UsuarioTable.firebaseUid],
-                        nickname = row[UsuarioTable.nickname],
-                        nombre = row[UsuarioTable.nombre],
-                        email = row[UsuarioTable.email],
-                        imagenUrl = row[UsuarioTable.imagenUrl],
-                        ultimaLatitud = row[UsuarioTable.ultimaLatitud],
-                        ultimaLongitud = row[UsuarioTable.ultimaLongitud],
-                        valoracionPromedio = row[UsuarioTable.valoracionPromedio],
-                        fechaRegistro = Instant.parse(row[UsuarioTable.fechaRegistro].toString())
-                    )
-                }
-        }
-    }
-
-    @OptIn(ExperimentalTime::class)
-    fun getUserByFirebaseUid(firebaseUid: String): Usuario? {
+    fun getUserByUid(uid: String): Usuario? {
         println("Iniciando sesion con UID")
         return try {
             transaction {
-                UsuarioTable.select { UsuarioTable.firebaseUid eq firebaseUid }
+                UsuarioTable.select { UsuarioTable.uid eq uid }
                     .singleOrNull()
                     ?.let { row ->
                         Usuario(
-                            id = row[UsuarioTable.id],
-                            firebaseUid = row[UsuarioTable.firebaseUid],
+                            uid = row[UsuarioTable.uid],
                             nickname = row[UsuarioTable.nickname],
                             nombre = row[UsuarioTable.nombre],
                             email = row[UsuarioTable.email],
@@ -115,7 +91,7 @@ object UsuarioService {
                     }
             }
         } catch (e: Exception) {
-            println("Error al buscar usuario por firebaseUid: ${e.message}")
+            println("Error al buscar usuario por uid: ${e.message}")
             null
         }
     }
@@ -127,8 +103,7 @@ object UsuarioService {
                     .singleOrNull()
                     ?.let { row ->
                         Usuario(
-                            id = row[UsuarioTable.id],
-                            firebaseUid = row[UsuarioTable.firebaseUid],
+                            uid = row[UsuarioTable.uid],
                             nickname = row[UsuarioTable.nickname],
                             nombre = row[UsuarioTable.nombre],
                             email = row[UsuarioTable.email],

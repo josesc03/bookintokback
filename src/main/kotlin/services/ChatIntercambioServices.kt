@@ -9,22 +9,22 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import tables.ChatTable
 import tables.IntercambioTable
 import tables.LibroTable
+import java.time.Instant
 import java.time.LocalDateTime
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 object ChatIntercambioService {
     fun crearChatEIntercambio(
-        idUsuarioOfertante: Int,
-        idUsuarioInteresado: String,
+        uidUsuarioOfertante: String,
+        uidUsuarioInteresado: String,
         idLibro: String
     ): Pair<Chat, Intercambio> {
         return transaction {
             val ahora = LocalDateTime.now()
 
             val idChat = ChatTable.insert {
-                it[ChatTable.idUsuarioOfertante] = idUsuarioOfertante
-                it[ChatTable.idUsuarioInteresado] = idUsuarioInteresado
+                it[ChatTable.uidUsuarioOfertante] = uidUsuarioOfertante
+                it[ChatTable.uidUsuarioInteresado] = uidUsuarioInteresado
                 it[ChatTable.idLibro] = idLibro
                 it[fechaCreacion] = ahora
             } get ChatTable.id
@@ -43,12 +43,12 @@ object ChatIntercambioService {
     }
 
     @OptIn(ExperimentalTime::class)
-    fun obtenerChatsActivos(idUsuario: String): Map<Int, ChatInfo> {
+    fun obtenerChatsActivos(uidUsuario: String): Map<Int, ChatInfo> {
         return transaction {
             (ChatTable innerJoin IntercambioTable)
                 .select {
-                    ((ChatTable.idUsuarioOfertante eq idUsuario.toInt()) or
-                            (ChatTable.idUsuarioInteresado eq idUsuario)) and
+                    ((ChatTable.uidUsuarioOfertante eq uidUsuario) or
+                            (ChatTable.uidUsuarioInteresado eq uidUsuario)) and
                             (IntercambioTable.estado inList listOf(
                                 EstadoIntercambio.PENDIENTE,
                                 EstadoIntercambio.ACEPTADO
@@ -57,8 +57,8 @@ object ChatIntercambioService {
                 .associate { row ->
                     val chat = Chat(
                         id = row[ChatTable.id],
-                        idUsuarioOfertante = row[ChatTable.idUsuarioOfertante],
-                        idUsuarioInteresado = row[ChatTable.idUsuarioInteresado],
+                        uidUsuarioOfertante = row[ChatTable.uidUsuarioOfertante],
+                        uidUsuarioInteresado = row[ChatTable.uidUsuarioInteresado],
                         idLibro = row[ChatTable.idLibro],
                         fechaCreacion = Instant.parse(row[LibroTable.fechaPublicacion].toString())
                     )
@@ -88,14 +88,14 @@ object ChatIntercambioService {
     fun actualizarEstadoIntercambio(
         chatId: Int,
         nuevoEstado: EstadoIntercambio,
-        idUsuario: String
+        uidUsuario: String
     ): EstadoIntercambio {
         return transaction {
             val chatExiste = ChatTable
                 .select {
                     (ChatTable.id eq chatId) and
-                            ((ChatTable.idUsuarioOfertante eq idUsuario.toInt()) or
-                                    (ChatTable.idUsuarioInteresado eq idUsuario))
+                            ((ChatTable.uidUsuarioOfertante eq uidUsuario) or
+                                    (ChatTable.uidUsuarioInteresado eq uidUsuario))
                 }
                 .count() > 0
 
@@ -145,8 +145,8 @@ object ChatIntercambioService {
             .map { row ->
                 Chat(
                     id = row[ChatTable.id],
-                    idUsuarioOfertante = row[ChatTable.idUsuarioOfertante],
-                    idUsuarioInteresado = row[ChatTable.idUsuarioInteresado],
+                    uidUsuarioOfertante = row[ChatTable.uidUsuarioOfertante],
+                    uidUsuarioInteresado = row[ChatTable.uidUsuarioInteresado],
                     idLibro = row[ChatTable.idLibro],
                     fechaCreacion = Instant.parse(row[LibroTable.fechaPublicacion].toString())
                 )

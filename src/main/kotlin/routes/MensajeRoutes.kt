@@ -27,7 +27,7 @@ fun Route.mensajeRoutes() {
                     val contenido = call.receive<String>()
                     val mensaje = MensajeService.enviarMensaje(
                         chatId = chatId,
-                        idRemitente = uid.toInt(),
+                        uidRemitente = uid,
                         contenido = contenido
                     )
                     call.respond(mensaje)
@@ -55,7 +55,7 @@ fun Route.mensajeRoutes() {
                 try {
                     val mensajes = MensajeService.getMensajes(
                         chatId = chatId,
-                        idUsuario = uid.toInt()
+                        uidUsuario = uid
                     )
                     call.respond(mensajes)
                 } catch (e: Exception) {

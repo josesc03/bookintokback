@@ -9,7 +9,7 @@ import kotlin.time.ExperimentalTime
 data class Mensaje @OptIn(ExperimentalTime::class) constructor(
     val id: Int,
     val idChat: Int,
-    val idRemitente: Int,
+    val idRemitente: String,
     val contenido: String,
     @Serializable(with = InstantSerializer::class)
     val timestamp: Instant

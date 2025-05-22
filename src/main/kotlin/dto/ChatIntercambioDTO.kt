@@ -7,7 +7,7 @@ import models.Intercambio
 
 @Serializable
 data class CrearChatRequest(
-    val idUsuarioInteresado: String,
+    val uidUsuarioInteresado: String,
     val idLibro: String
 )
 

@@ -12,14 +12,14 @@ import services.ValoracionService
 fun Route.valoracionRoutes() {
     route("/valoraciones") {
         authenticate("firebase_auth") {
-            post("/usuarios/{idUsuarioValorado}") {
+            post("/usuarios/{uidUsuarioValorado}") {
                 val uid = call.principal<UserIdPrincipal>()?.name
                     ?: return@post call.respondText(
                         "No autenticado",
                         status = HttpStatusCode.Unauthorized
                     )
 
-                val idUsuarioValorado = call.parameters["idUsuarioValorado"]?.toIntOrNull()
+                val uidUsuarioValorado = call.parameters["uidUsuarioValorado"]
                     ?: return@post call.respondText(
                         "ID de usuario inválido",
                         status = HttpStatusCode.BadRequest
@@ -39,8 +39,8 @@ fun Route.valoracionRoutes() {
                     }
 
                     val valoracion = ValoracionService.crearValoracion(
-                        idUsuarioValorado = idUsuarioValorado,
-                        idUsuarioQueValora = uid.toInt(),
+                        uidUsuarioValorado = uidUsuarioValorado,
+                        uidUsuarioQueValora = uid,
                         puntuacion = puntuacion,
                         comentario = comentario
                     )
@@ -63,19 +63,19 @@ fun Route.valoracionRoutes() {
                         )
                     }
                 }
-                
+
             }
 
             // Obtener valoraciones de un usuario
-            get("/usuarios/{idUsuario}") {
-                val idUsuario = call.parameters["idUsuario"]?.toIntOrNull()
+            get("/usuarios/{uidUsuario}") {
+                val uidUsuario = call.parameters["uidUsuario"]
                     ?: return@get call.respondText(
                         "ID de usuario inválido",
                         status = HttpStatusCode.BadRequest
                     )
 
                 try {
-                    val valoraciones = ValoracionService.getValoracionesDeUsuario(idUsuario)
+                    val valoraciones = ValoracionService.getValoracionesDeUsuario(uidUsuario)
                     call.respond(valoraciones)
                 } catch (e: Exception) {
                     call.respondText(
@@ -87,15 +87,15 @@ fun Route.valoracionRoutes() {
             }
 
             // Añadir dentro del bloque authenticate
-            get("/usuarios/{idUsuario}/promedio") {
-                val idUsuario = call.parameters["idUsuario"]?.toIntOrNull()
+            get("/usuarios/{uidUsuario}/promedio") {
+                val uidUsuario = call.parameters["uidUsuario"]
                     ?: return@get call.respondText(
                         "ID de usuario inválido",
                         status = HttpStatusCode.BadRequest
                     )
 
                 try {
-                    val promedio = ValoracionService.getValoracionPromedio(idUsuario)
+                    val promedio = ValoracionService.getValoracionPromedio(uidUsuario)
                     call.respond(mapOf("promedio" to promedio))
                 } catch (e: Exception) {
                     call.respondText(

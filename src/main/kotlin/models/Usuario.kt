@@ -8,8 +8,7 @@ import kotlin.time.ExperimentalTime
 
 @Serializable
 data class Usuario @OptIn(ExperimentalTime::class) constructor(
-    val id: Int,
-    val firebaseUid: String,
+    val uid: String,
     val nickname: String,
     val nombre: String,
     val email: String,

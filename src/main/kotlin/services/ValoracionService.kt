@@ -9,15 +9,15 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import tables.ChatTable
 import tables.IntercambioTable
 import tables.ValoracionTable
+import java.time.Instant
 import java.time.LocalDateTime
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 object ValoracionService {
     @OptIn(ExperimentalTime::class)
     fun crearValoracion(
-        idUsuarioValorado: Int,
-        idUsuarioQueValora: Int,
+        uidUsuarioValorado: String,
+        uidUsuarioQueValora: String,
         puntuacion: Int,
         comentario: String?
     ): Valoracion {
@@ -27,10 +27,10 @@ object ValoracionService {
                 .join(ChatTable, JoinType.INNER, IntercambioTable.idChat, ChatTable.id)
                 .select {
                     IntercambioTable.estado.eq(EstadoIntercambio.COMPLETADO) and (
-                            (ChatTable.idUsuarioOfertante.eq(idUsuarioValorado) and
-                                    ChatTable.idUsuarioInteresado.eq(idUsuarioQueValora.toString())) or
-                                    (ChatTable.idUsuarioOfertante.eq(idUsuarioQueValora) and
-                                            ChatTable.idUsuarioInteresado.eq(idUsuarioValorado.toString()))
+                            (ChatTable.uidUsuarioOfertante.eq(uidUsuarioValorado) and
+                                    ChatTable.uidUsuarioInteresado.eq(uidUsuarioQueValora.toString())) or
+                                    (ChatTable.uidUsuarioOfertante.eq(uidUsuarioQueValora) and
+                                            ChatTable.uidUsuarioInteresado.eq(uidUsuarioValorado.toString()))
                             )
                 })
                 .count() > 0
@@ -42,8 +42,8 @@ object ValoracionService {
             // Verificar que no existe una valoración previa
             val valoracionPrevia = ValoracionTable
                 .select {
-                    (ValoracionTable.idUsuarioValorado eq idUsuarioValorado) and
-                            (ValoracionTable.idUsuarioQueValora eq idUsuarioQueValora)
+                    (ValoracionTable.uidUsuarioValorado eq uidUsuarioValorado) and
+                            (ValoracionTable.uidUsuarioQueValora eq uidUsuarioQueValora)
                 }
                 .count() > 0
 
@@ -57,8 +57,8 @@ object ValoracionService {
             }
 
             val id = ValoracionTable.insert {
-                it[ValoracionTable.idUsuarioValorado] = idUsuarioValorado
-                it[ValoracionTable.idUsuarioQueValora] = idUsuarioQueValora
+                it[ValoracionTable.uidUsuarioValorado] = uidUsuarioValorado
+                it[ValoracionTable.uidUsuarioQueValora] = uidUsuarioQueValora
                 it[ValoracionTable.puntuacion] = puntuacion
                 it[ValoracionTable.comentario] = comentario
                 it[fechaValoracion] = LocalDateTime.now()
@@ -69,8 +69,8 @@ object ValoracionService {
                 .map { row ->
                     Valoracion(
                         id = row[ValoracionTable.id],
-                        idUsuarioValorado = row[ValoracionTable.idUsuarioValorado],
-                        idUsuarioQueValora = row[ValoracionTable.idUsuarioQueValora],
+                        uidUsuarioValorado = row[ValoracionTable.uidUsuarioValorado],
+                        uidUsuarioQueValora = row[ValoracionTable.uidUsuarioQueValora],
                         puntuacion = row[ValoracionTable.puntuacion],
                         comentario = row[ValoracionTable.comentario],
                         fechaValoracion = Instant.parse(row[ValoracionTable.fechaValoracion].toString())
@@ -81,15 +81,15 @@ object ValoracionService {
     }
 
     @OptIn(ExperimentalTime::class)
-    fun getValoracionesDeUsuario(idUsuario: Int): List<Valoracion> {
+    fun getValoracionesDeUsuario(uidUsuario: String): List<Valoracion> {
         return transaction {
             ValoracionTable
-                .select { ValoracionTable.idUsuarioValorado eq idUsuario }
+                .select { ValoracionTable.uidUsuarioValorado eq uidUsuario }
                 .map { row ->
                     Valoracion(
                         id = row[ValoracionTable.id],
-                        idUsuarioValorado = row[ValoracionTable.idUsuarioValorado],
-                        idUsuarioQueValora = row[ValoracionTable.idUsuarioQueValora],
+                        uidUsuarioValorado = row[ValoracionTable.uidUsuarioValorado],
+                        uidUsuarioQueValora = row[ValoracionTable.uidUsuarioQueValora],
                         puntuacion = row[ValoracionTable.puntuacion],
                         comentario = row[ValoracionTable.comentario],
                         fechaValoracion = Instant.parse(row[ValoracionTable.fechaValoracion].toString())
@@ -98,11 +98,11 @@ object ValoracionService {
         }
     }
 
-    fun getValoracionPromedio(idUsuario: Int): Double {
+    fun getValoracionPromedio(uidUsuario: String): Double {
         return transaction {
             ValoracionTable
                 .slice(ValoracionTable.puntuacion.avg())
-                .select { ValoracionTable.idUsuarioValorado eq idUsuario }
+                .select { ValoracionTable.uidUsuarioValorado eq uidUsuario }
                 .map { it[ValoracionTable.puntuacion.avg()] ?: 0.0 }
                 .single() as Double
         }

@@ -18,15 +18,15 @@ import kotlin.time.ExperimentalTime
 object MensajeService {
     fun enviarMensaje(
         chatId: Int,
-        idRemitente: Int,
+        uidRemitente: String,
         contenido: String
     ): Mensaje {
         return transaction {
             val chatExiste = ChatTable
                 .select {
                     (ChatTable.id eq chatId) and
-                            ((ChatTable.idUsuarioOfertante eq idRemitente) or
-                                    (ChatTable.idUsuarioInteresado eq idRemitente.toString()))
+                            ((ChatTable.uidUsuarioOfertante eq uidRemitente) or
+                                    (ChatTable.uidUsuarioInteresado eq uidRemitente))
                 }
                 .count() > 0
 
@@ -50,7 +50,7 @@ object MensajeService {
 
             val idMensaje = MensajeTable.insert {
                 it[MensajeTable.idChat] = chatId
-                it[MensajeTable.idRemitente] = idRemitente
+                it[MensajeTable.uidRemitente] = uidRemitente
                 it[MensajeTable.contenido] = contenido
             } get MensajeTable.id
 
@@ -60,13 +60,13 @@ object MensajeService {
     }
 
     @OptIn(ExperimentalTime::class)
-    fun getMensajes(chatId: Int, idUsuario: Int): List<Mensaje> {
+    fun getMensajes(chatId: Int, uidUsuario: String): List<Mensaje> {
         return transaction {
             val chatExiste = ChatTable
                 .select {
                     (ChatTable.id eq chatId) and
-                            ((ChatTable.idUsuarioOfertante eq idUsuario) or
-                                    (ChatTable.idUsuarioInteresado eq idUsuario.toString()))
+                            ((ChatTable.uidUsuarioOfertante eq uidUsuario) or
+                                    (ChatTable.uidUsuarioInteresado eq uidUsuario.toString()))
                 }
                 .count() > 0
 
@@ -81,7 +81,7 @@ object MensajeService {
                     Mensaje(
                         id = row[MensajeTable.id],
                         idChat = row[MensajeTable.idChat],
-                        idRemitente = row[MensajeTable.idRemitente],
+                        idRemitente = row[MensajeTable.uidRemitente],
                         contenido = row[MensajeTable.contenido],
                         timestamp = Instant.parse(row[MensajeTable.timestamp].toString())
                     )
@@ -98,7 +98,7 @@ object MensajeService {
                     Mensaje(
                         id = row[MensajeTable.id],
                         idChat = row[MensajeTable.idChat],
-                        idRemitente = row[MensajeTable.idRemitente],
+                        idRemitente = row[MensajeTable.uidRemitente],
                         contenido = row[MensajeTable.contenido],
                         timestamp = Instant.parse(row[MensajeTable.timestamp].toString())
                     )

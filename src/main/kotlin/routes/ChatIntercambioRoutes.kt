@@ -25,8 +25,8 @@ fun Route.chatIntercambioRoutes() {
             try {
                 val request = call.receive<CrearChatRequest>()
                 val (chat, intercambio) = ChatIntercambioService.crearChatEIntercambio(
-                    idUsuarioOfertante = principal.name.toInt(),
-                    idUsuarioInteresado = request.idUsuarioInteresado,
+                    uidUsuarioOfertante = principal.name,
+                    uidUsuarioInteresado = request.uidUsuarioInteresado,
                     idLibro = request.idLibro
                 )
 
@@ -102,7 +102,7 @@ fun Route.chatIntercambioRoutes() {
                 val nuevoEstado = ChatIntercambioService.actualizarEstadoIntercambio(
                     chatId = chatId,
                     nuevoEstado = request.estado,
-                    idUsuario = principal.name
+                    uidUsuario = principal.name
                 )
                 call.respondSuccess(mapOf("estado" to nuevoEstado))
             } catch (e: Exception) {

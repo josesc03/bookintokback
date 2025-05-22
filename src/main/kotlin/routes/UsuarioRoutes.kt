@@ -22,7 +22,7 @@ fun Route.usuarioRoutes() {
 
 
             // Buscar usuario
-            UsuarioService.getUserByFirebaseUid(uid)
+            UsuarioService.getUserByUid(uid)
                 ?: throw IllegalArgumentException("Usuario no encontrado")
 
             call.respond(
@@ -65,7 +65,7 @@ fun Route.usuarioRoutes() {
 
 
             // Verificar si el usuario ya existe por UID
-            if (UsuarioService.getUserByFirebaseUid(uid) != null) {
+            if (UsuarioService.getUserByUid(uid) != null) {
                 throw IllegalArgumentException("Usuario ya registrado con este UID")
             }
 
@@ -77,7 +77,7 @@ fun Route.usuarioRoutes() {
 
             // Crear usuario
             UsuarioService.createUser(
-                firebaseUid = uid,
+                uid = uid,
                 nickname = nickname,
                 email = email
             )
@@ -115,7 +115,6 @@ fun Route.usuarioRoutes() {
             val request = call.receive<Map<String, Double>>()
             val authHeader =
                 call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
-            authHeader.removePrefix("Bearer ").trim()
             val token = authHeader.removePrefix("Bearer ").trim()
             val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
             val uid = decodedToken.uid
@@ -168,16 +167,16 @@ fun Route.usuarioRoutes() {
         }
     }
 
-    get("/usuarios/{id}") {
-        println("Iniciando endpoint /usuarios/{id}")
+    get("/usuarios/{uid}") {
+        println("Iniciando endpoint /usuarios/{uid}")
         try {
-            val id = call.parameters["id"]?.toIntOrNull()
+            val uid = call.parameters["uid"]
                 ?: return@get call.respondError(
                     "ID inválido",
                     HttpStatusCode.BadRequest
                 )
 
-            val usuario = UsuarioService.getUserById(id)
+            val usuario = UsuarioService.getUserByUid(uid)
                 ?: return@get call.respondError(
                     "Usuario no encontrado",
                     HttpStatusCode.NotFound
@@ -208,12 +207,11 @@ fun Route.usuarioRoutes() {
         try {
             val authHeader =
                 call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
-            authHeader.removePrefix("Bearer ").trim()
             val token = authHeader.removePrefix("Bearer ").trim()
             val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
             val uid = decodedToken.uid
 
-            val usuario = UsuarioService.getUserByFirebaseUid(uid)
+            val usuario = UsuarioService.getUserByUid(uid)
                 ?: return@get call.respondError(
                     "Usuario no encontrado",
                     HttpStatusCode.NotFound

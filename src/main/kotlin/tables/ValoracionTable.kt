@@ -5,8 +5,8 @@ import org.jetbrains.exposed.sql.javatime.datetime
 
 object ValoracionTable : Table("valoracion") {
     val id = integer("id").autoIncrement()
-    val idUsuarioValorado = integer("id_usuario_valorado").references(UsuarioTable.id)
-    val idUsuarioQueValora = integer("id_usuario_que_valora").references(UsuarioTable.id)
+    val uidUsuarioValorado = varchar("uid_usuario_valorado", 255).references(UsuarioTable.uid)
+    val uidUsuarioQueValora = varchar("uid_usuario_que_valora", 255).references(UsuarioTable.uid)
     val puntuacion = integer("puntuacion")
     val comentario = text("comentario").nullable()
     val fechaValoracion = datetime("fecha_valoracion")
@@ -14,6 +14,6 @@ object ValoracionTable : Table("valoracion") {
     override val primaryKey = PrimaryKey(id)
 
     init {
-        uniqueIndex("indice_valoracion", idUsuarioValorado, idUsuarioQueValora)
+        uniqueIndex("indice_valoracion", uidUsuarioValorado, uidUsuarioQueValora)
     }
 }

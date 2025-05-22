@@ -5,26 +5,27 @@ import exceptions.NotFoundException
 import exceptions.UnauthorizedException
 import models.EstadoLibro
 import models.Libro
+import models.TipoCubierta
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import tables.LibroTable
+import java.time.Instant
 import java.time.LocalDateTime
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 object LibroService {
     fun createLibro(
-        idUsuario: Int,
+        uidUsuario: String,
         createRequest: BookRequest
     ): Libro {
         return transaction {
             val id = LibroTable.insert {
-                it[LibroTable.idUsuario] = idUsuario
+                it[LibroTable.uidUsuario] = uidUsuario
                 it[titulo] = createRequest.titulo
                 it[autor] = createRequest.autor
                 it[idioma] = createRequest.idioma
-                it[cubierta] = createRequest.cubierta.name
+                it[cubierta] = createRequest.cubierta
                 it[categoriaPrincipal] = createRequest.categoriaPrincipal
                 it[categoriaSecundaria] = createRequest.categoriaSecundaria
                 it[estado] = EstadoLibro.DISPONIBLE
@@ -38,14 +39,14 @@ object LibroService {
 
     fun updateLibro(
         libroId: Int,
-        usuarioId: Int,
+        usuarioId: String,
         updateRequest: BookRequest
     ): Libro {
         return transaction {
             LibroTable
                 .select {
                     (LibroTable.id eq libroId) and
-                            (LibroTable.idUsuario eq usuarioId)
+                            (LibroTable.uidUsuario eq usuarioId)
                 }
                 .singleOrNull()
                 ?: throw UnauthorizedException("Libro no encontrado o no tienes permiso para modificarlo")
@@ -54,7 +55,7 @@ object LibroService {
                 it[titulo] = updateRequest.titulo
                 it[autor] = updateRequest.autor
                 it[idioma] = updateRequest.idioma
-                it[cubierta] = updateRequest.cubierta.name
+                it[cubierta] = updateRequest.cubierta
                 it[categoriaPrincipal] = updateRequest.categoriaPrincipal
                 it[categoriaSecundaria] = updateRequest.categoriaSecundaria
                 it[estado] = updateRequest.estado
@@ -74,7 +75,7 @@ object LibroService {
                 .mapNotNull { row ->
                     Libro(
                         id = row[LibroTable.id],
-                        idUsuario = row[LibroTable.idUsuario],
+                        uidUsuario = row[LibroTable.uidUsuario],
                         titulo = row[LibroTable.titulo],
                         autor = row[LibroTable.autor],
                         idioma = row[LibroTable.idioma],
@@ -98,7 +99,7 @@ object LibroService {
                 .mapNotNull { row ->
                     Libro(
                         id = row[LibroTable.id],
-                        idUsuario = row[LibroTable.idUsuario],
+                        uidUsuario = row[LibroTable.uidUsuario],
                         titulo = row[LibroTable.titulo],
                         autor = row[LibroTable.autor],
                         idioma = row[LibroTable.idioma],
@@ -130,8 +131,13 @@ object LibroService {
                 query = query.andWhere { LibroTable.idioma eq it }
             }
 
-            filtros["cubierta"]?.let {
-                query = query.andWhere { LibroTable.cubierta eq it }
+            filtros["cubierta"]?.let { cubiertaStr ->
+                try {
+                    val cubierta = TipoCubierta.valueOf(cubiertaStr.uppercase())
+                    query = query.andWhere { LibroTable.cubierta eq cubierta }
+                } catch (e: IllegalArgumentException) {
+                    throw IllegalArgumentException("Estado de libro inválido: $cubiertaStr")
+                }
             }
 
             filtros["categoriaPrincipal"]?.let {
@@ -154,7 +160,7 @@ object LibroService {
             query.map { row ->
                 Libro(
                     id = row[LibroTable.id],
-                    idUsuario = row[LibroTable.idUsuario],
+                    uidUsuario = row[LibroTable.uidUsuario],
                     titulo = row[LibroTable.titulo],
                     autor = row[LibroTable.autor],
                     idioma = row[LibroTable.idioma],
