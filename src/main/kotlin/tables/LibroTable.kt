@@ -7,7 +7,7 @@ import org.jetbrains.exposed.sql.javatime.datetime
 
 object LibroTable : Table("Libro") {
     val id = integer("id").autoIncrement()
-    val uidUsuario = varchar("id_usuario", 255).references(UsuarioTable.uid)
+    val uidUsuario = varchar("uid_usuario", 255).references(UsuarioTable.uid)
     val titulo = varchar("titulo", 255)
     val autor = varchar("autor", 255)
     val categoriaPrincipal = varchar("categoria_principal", 255)

@@ -3,7 +3,7 @@ package routes
 import UsuarioService
 import com.google.firebase.auth.FirebaseAuth
 import dto.BookRequest
-import dto.LibroResponse
+import dto.LibrosResponse
 import exceptions.NotFoundException
 import exceptions.UnauthorizedException
 import io.ktor.http.*
@@ -25,16 +25,16 @@ fun Route.libroRoutes() {
             val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
             decodedToken.uid
 
-            val libros = LibroService.getLibros()
-            libros.map { libro ->
-                LibroResponse(
-                    status = "success",
-                    libro = libro
-                )
-            }
+            val libros = LibroService.getAllLibros()
+            println(libros)
+
+            val data = LibrosResponse(
+                "success",
+                libros
+            )
 
             call.respondSuccess(
-                data = libros,
+                data = data,
                 message = "Libros encontrados exitosamente"
             )
         } catch (e: Exception) {

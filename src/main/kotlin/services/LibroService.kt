@@ -92,7 +92,7 @@ object LibroService {
     }
 
     @OptIn(ExperimentalTime::class)
-    fun getLibros(): List<Libro> {
+    fun getAllLibros(): List<Libro> {
         return transaction {
             LibroTable
                 .selectAll()
