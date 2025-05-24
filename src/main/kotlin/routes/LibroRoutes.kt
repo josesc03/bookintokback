@@ -25,7 +25,18 @@ fun Route.libroRoutes() {
             val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
             decodedToken.uid
 
-            val libros = LibroService.getAllLibros()
+            // Recoger todos los posibles parámetros de filtro
+            val filtros = mapOf(
+                "titulo" to call.parameters["titulo"],
+                "autor" to call.parameters["autor"],
+                "idioma" to call.parameters["idioma"],
+                "cubierta" to call.parameters["cubierta"],
+                "categoriaPrincipal" to call.parameters["categoriaPrincipal"],
+                "categoriaSecundaria" to call.parameters["categoriaSecundaria"],
+                "estado" to call.parameters["estado"]
+            )
+
+            val libros = LibroService.getLibros(filtros, usuarioUid = decodedToken.uid)
             println(libros)
 
             val data = LibrosResponse(
@@ -68,39 +79,6 @@ fun Route.libroRoutes() {
             data = libro,
             message = "Libro encontrado exitosamente"
         )
-    }
-
-    // regoger libro por filtro
-    get("/libro/filter") {
-        call.principal<UserIdPrincipal>()?.name
-            ?: return@get call.respondError(
-                "No autenticado",
-                HttpStatusCode.Unauthorized
-            )
-
-        // Recoger todos los posibles parámetros de filtro
-        val filtros = mapOf(
-            "titulo" to call.parameters["titulo"],
-            "autor" to call.parameters["autor"],
-            "idioma" to call.parameters["idioma"],
-            "cubierta" to call.parameters["cubierta"],
-            "categoriaPrincipal" to call.parameters["categoriaPrincipal"],
-            "categoriaSecundaria" to call.parameters["categoriaSecundaria"],
-            "estado" to call.parameters["estado"]
-        )
-
-        try {
-            val libros = LibroService.getLibrosConFiltros(filtros)
-            call.respondSuccess(
-                data = libros,
-                message = "Libros encontrados exitosamente"
-            )
-        } catch (e: Exception) {
-            call.respondError(
-                "Error al obtener los libros: ${e.message}",
-                HttpStatusCode.InternalServerError
-            )
-        }
     }
 
     // crear libro

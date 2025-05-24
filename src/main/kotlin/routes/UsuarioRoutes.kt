@@ -10,47 +10,6 @@ import io.ktor.server.routing.*
 import utils.respondError
 
 fun Route.usuarioRoutes() {
-    post("/login") {
-        println("Iniciando endpoint /login")
-        try {
-            call.receive<Map<String, String>>()
-            val authHeader =
-                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
-            val token = authHeader.removePrefix("Bearer ").trim()
-            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
-            val uid = decodedToken.uid
-
-
-            // Buscar usuario
-            UsuarioService.getUserByUid(uid)
-                ?: throw IllegalArgumentException("Usuario no encontrado")
-
-            call.respond(
-                HttpStatusCode.OK, mapOf(
-                    "status" to "success",
-                    "message" to "Login exitoso",
-                )
-            )
-
-            println("Sesión iniciada correctamente")
-
-        } catch (e: IllegalArgumentException) {
-            call.respond(
-                HttpStatusCode.BadRequest, mapOf(
-                    "status" to "error",
-                    "message" to (e.message ?: "Token inválido")
-                )
-            )
-        } catch (e: Exception) {
-            call.respond(
-                HttpStatusCode.Unauthorized, mapOf(
-                    "status" to "error",
-                    "message" to "Error de autenticación"
-                )
-            )
-        }
-    }
-
     post("/register") {
         println("Iniciando endpoint /register")
         try {

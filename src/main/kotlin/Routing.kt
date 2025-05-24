@@ -43,7 +43,6 @@ fun Application.configureRouting() {
 
         }
 
-        authRoutes()
         usuarioRoutes()
         libroRoutes()
         mensajeRoutes()
