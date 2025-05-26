@@ -6,5 +6,5 @@ import models.Libro
 @Serializable
 data class LibroResponse(
     val status: String,
-    val libro: Libro
+    val libro: Libro?
 )

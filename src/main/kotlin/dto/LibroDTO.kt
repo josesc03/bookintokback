@@ -1,8 +1,8 @@
 package dto
 
 import kotlinx.serialization.Serializable
-import models.TipoCubierta
 import models.EstadoLibro
+import models.TipoCubierta
 
 @Serializable
 data class BookRequest(
@@ -13,5 +13,6 @@ data class BookRequest(
     val categoriaPrincipal: String,
     val categoriaSecundaria: String? = null,
     val estado: EstadoLibro,
-    val imagenUrl: String? = null
+    val imagenUrl: String? = null,
+    val descripcion: String? = null
 )

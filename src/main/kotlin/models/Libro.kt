@@ -3,25 +3,32 @@ package models
 import kotlinx.serialization.Serializable
 import utils.InstantSerializer
 import java.time.Instant
-import kotlin.time.ExperimentalTime
 
+@Serializable
 enum class EstadoLibro {
-    DISPONIBLE,
-    RESERVADO,
-    INTERCAMBIADO
-}
+    NUEVO,
 
-enum class TipoCubierta {
-    TAPA_BLANDA,
-    TAPA_DURA
+    COMO_NUEVO,
+
+    USADO,
+
+    ANTIGUO
 }
 
 @Serializable
-data class Libro @OptIn(ExperimentalTime::class) constructor(
+enum class TipoCubierta {
+    TAPA_DURA,
+
+    TAPA_BLANDA
+}
+
+@Serializable
+data class Libro(
     val id: Int,
     val uidUsuario: String,
     val titulo: String,
     val autor: String,
+    val descripcion: String?,
     val idioma: String,
     val cubierta: TipoCubierta,
     val categoriaPrincipal: String,

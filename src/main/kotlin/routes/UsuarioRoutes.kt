@@ -126,9 +126,15 @@ fun Route.usuarioRoutes() {
         }
     }
 
-    get("/usuarios/{uid}") {
-        println("Iniciando endpoint /usuarios/{uid}")
+    get("/usuario/{uid}") {
+        println("Iniciando endpoint /usuario/{uid}")
         try {
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            decodedToken.uid
+
             val uid = call.parameters["uid"]
                 ?: return@get call.respondError(
                     "ID inválido",
@@ -143,9 +149,9 @@ fun Route.usuarioRoutes() {
 
             call.respond(
                 HttpStatusCode.OK,
-                mapOf(
-                    "status" to "success",
-                    "usuario" to usuario
+                UsuarioResponse(
+                    status = "success",
+                    usuario = usuario
                 )
             )
         } catch (e: Exception) {
@@ -181,6 +187,47 @@ fun Route.usuarioRoutes() {
                 UsuarioResponse(
                     status = "success",
                     usuario = usuario
+                )
+            )
+        } catch (e: Exception) {
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al obtener el usuario\n${e.message}"
+                )
+            )
+        }
+    }
+
+    get("/usuario/{uid}/nombre") {
+        println("Iniciando endpoint /usuario/{uid}/nombre")
+
+        try {
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            decodedToken.uid
+
+            var userUid: String? = call.parameters["uid"]
+            if (userUid == null) {
+                call.respond(
+                    HttpStatusCode.OK,
+                    mapOf(
+                        "status" to "success",
+                        "message" to "Usuario no encontrado"
+                    )
+                )
+            }
+
+            val nombre = UsuarioService.getUserByUid(userUid!!)?.nombre
+
+            call.respond(
+                HttpStatusCode.OK,
+                mapOf(
+                    "status" to "success",
+                    "message" to nombre
                 )
             )
         } catch (e: Exception) {

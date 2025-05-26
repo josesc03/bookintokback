@@ -171,4 +171,17 @@ object ChatIntercambioService {
             .firstOrNull()
             ?: throw IllegalStateException("Intercambio no encontrado")
     }
+
+    fun hasCompletedExchange(uidUsuarioPropietario: String, uidUsuarioValorado: String): Boolean {
+        return transaction {
+            (ChatTable innerJoin IntercambioTable)
+                .select {
+                    ((ChatTable.uidUsuarioOfertante eq uidUsuarioPropietario) and (ChatTable.uidUsuarioInteresado eq uidUsuarioValorado)) or
+                            ((ChatTable.uidUsuarioOfertante eq uidUsuarioValorado) and (ChatTable.uidUsuarioInteresado eq uidUsuarioPropietario))
+                }
+                .any { row ->
+                    row[IntercambioTable.estado] == EstadoIntercambio.COMPLETADO
+                }
+        }
+    }
 }

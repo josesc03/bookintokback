@@ -3,6 +3,7 @@ package routes
 import UsuarioService
 import com.google.firebase.auth.FirebaseAuth
 import dto.BookRequest
+import dto.LibroResponse
 import dto.LibrosResponse
 import exceptions.NotFoundException
 import exceptions.UnauthorizedException
@@ -44,9 +45,45 @@ fun Route.libroRoutes() {
                 libros
             )
 
-            call.respondSuccess(
-                data = data,
-                message = "Libros encontrados exitosamente"
+            call.respond(
+                HttpStatusCode.OK,
+                data
+            )
+        } catch (e: Exception) {
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al obtener los libros\n${e.message}"
+                )
+            )
+        }
+    }
+
+    // recoger todos los libros
+    get("/libros/{uid}") {
+        try {
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            decodedToken.uid
+
+            val uid = call.parameters["uid"] ?: return@get call.respondError(
+                "ID de usuario inválido",
+                HttpStatusCode.BadRequest
+            )
+
+            val libros = LibroService.getLibrosByUid(uid)
+
+            val data = LibrosResponse(
+                "success",
+                libros
+            )
+
+            call.respond(
+                HttpStatusCode.OK,
+                data
             )
         } catch (e: Exception) {
             call.respond(
@@ -61,116 +98,118 @@ fun Route.libroRoutes() {
 
     // recoger libro por id
     get("/libro/{id}") {
-        call.principal<UserIdPrincipal>()?.name
-            ?: return@get call.respondError(
-                "No autenticado",
-                HttpStatusCode.Unauthorized
-            )
+        try {
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            decodedToken.uid
 
-        val libroId = call.parameters["id"]?.toIntOrNull()
-            ?: return@get call.respondError(
-                "ID de libro inválido",
+            val id = call.parameters["id"]?.toInt() ?: return@get call.respondError(
+                "ID de usuario inválido",
                 HttpStatusCode.BadRequest
             )
 
-        val libro = LibroService.getLibroById(id = libroId)
+            var libro = LibroService.getLibroById(id)
 
-        call.respondSuccess(
-            data = libro,
-            message = "Libro encontrado exitosamente"
-        )
+            val data = LibroResponse(
+                "success",
+                libro
+            )
+
+            call.respond(
+                HttpStatusCode.OK,
+                data
+            )
+        } catch (e: Exception) {
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al obtener los libros\n${e.message}"
+                )
+            )
+        }
     }
 
     // crear libro
     post("/libro/crearLibro") {
+        println("Iniciando endpoint /libro/crearLibro")
         try {
-            val uid = call.principal<UserIdPrincipal>()?.name
-                ?: return@post call.respondError(
-                    "No autenticado",
-                    HttpStatusCode.Unauthorized
-                )
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            val uid = decodedToken.uid
 
-            val usuario = UsuarioService.getUserByUid(uid)
-                ?: return@post call.respondError(
-                    "Usuario no encontrado",
-                    HttpStatusCode.NotFound
-                )
+            val request = call.receive<BookRequest>()
 
-            val createRequest = call.receive<BookRequest>()
-
-            val nuevoLibro = LibroService.createLibro(
-                uidUsuario = usuario.uid,
-                createRequest = createRequest
+            var libro = LibroService.createLibro(
+                createRequest = request,
+                uidUsuario = uid
             )
 
-            call.respondSuccess(
-                data = nuevoLibro,
-                status = HttpStatusCode.Created,
-                message = "Libro creado exitosamente"
+
+            val data = LibroResponse(
+                "success",
+                libro
+            )
+
+            call.respond(
+                HttpStatusCode.OK,
+                data
             )
         } catch (e: Exception) {
-            call.respondError(
-                "Error al crear el libro: ${e.message}",
-                HttpStatusCode.InternalServerError
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al obtener los libros\n${e.message}"
+                )
             )
         }
     }
 
     // modificar libro
-    post("/libro/{id}") {
-        val libroId = call.parameters["id"]?.toIntOrNull()
-            ?: return@post call.respondError(
+    post("/libro/actualizarLibro/{id}") {
+        println("Iniciando endpoint /libro/actualizarLibro/{id}")
+        try {
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            val uid = decodedToken.uid
+
+            val id = call.parameters["id"]?.toInt() ?: return@post call.respondError(
                 "ID de libro inválido",
                 HttpStatusCode.BadRequest
             )
 
-        val uid = call.principal<UserIdPrincipal>()?.name
-            ?: return@post call.respondError(
-                "No autenticado",
-                HttpStatusCode.Unauthorized
+
+            val request = call.receive<BookRequest>()
+
+            var libro = LibroService.updateLibro(
+                libroId = id,
+                usuarioUid = uid,
+                updateRequest = request
             )
 
-        try {
-            val usuario = UsuarioService.getUserByUid(uid)
-                ?: return@post call.respondError(
-                    "Usuario no encontrado",
-                    HttpStatusCode.NotFound
-                )
-
-            if (usuario.uid != LibroService.getLibroById(libroId)?.uidUsuario) {
-                return@post call.respondError(
-                    "No tienes permiso para editar este libro",
-                    HttpStatusCode.Forbidden
-                )
-            } else {
-                val updateRequest = call.receive<BookRequest>()
-
-                val libroActualizado = LibroService.updateLibro(
-                    libroId = libroId,
-                    usuarioId = usuario.uid,
-                    updateRequest = updateRequest
-                )
-
-                call.respondSuccess(
-                    data = libroActualizado,
-                    message = "Libro actualizado exitosamente"
-                )
-            }
-
-        } catch (e: UnauthorizedException) {
-            call.respondError(
-                e.message ?: "No autorizado",
-                HttpStatusCode.Forbidden
+            val data = LibroResponse(
+                "success",
+                libro
             )
-        } catch (e: NotFoundException) {
-            call.respondError(
-                e.message ?: "Libro no encontrado",
-                HttpStatusCode.NotFound
+
+            call.respond(
+                HttpStatusCode.OK,
+                data
             )
         } catch (e: Exception) {
-            call.respondError(
-                "Error al actualizar el libro: ${e.message}",
-                HttpStatusCode.InternalServerError
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al obtener los libros\n${e.message}"
+                )
             )
         }
     }

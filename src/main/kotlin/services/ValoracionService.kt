@@ -98,13 +98,15 @@ object ValoracionService {
         }
     }
 
-    fun getValoracionPromedio(uidUsuario: String): Double {
-        return transaction {
-            ValoracionTable
-                .slice(ValoracionTable.puntuacion.avg())
-                .select { ValoracionTable.uidUsuarioValorado eq uidUsuario }
-                .map { it[ValoracionTable.puntuacion.avg()] ?: 0.0 }
-                .single() as Double
-        }
+    fun hasRatedUser(
+        uidUsuarioQueValora: String,
+        uidUsuarioValorado: String
+    ): Boolean {
+        return ValoracionTable
+            .select {
+                (ValoracionTable.uidUsuarioValorado eq uidUsuarioValorado) and
+                        (ValoracionTable.uidUsuarioQueValora eq uidUsuarioQueValora)
+            }
+            .count() > 0
     }
 }

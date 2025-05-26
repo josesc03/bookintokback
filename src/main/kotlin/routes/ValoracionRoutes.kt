@@ -1,109 +1,130 @@
 package routes
 
-import exceptions.UnauthorizedException
-import exceptions.ValidationException
+import com.google.firebase.auth.FirebaseAuth
+import dto.ValoracionesResponse
 import io.ktor.http.*
-import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import services.ValoracionService
+import services.ValoracionService.getValoracionesDeUsuario
+import services.ValoracionService.hasRatedUser
 
 fun Route.valoracionRoutes() {
-    route("/valoraciones") {
-        authenticate("firebase_auth") {
-            post("/usuarios/{uidUsuarioValorado}") {
-                val uid = call.principal<UserIdPrincipal>()?.name
-                    ?: return@post call.respondText(
-                        "No autenticado",
-                        status = HttpStatusCode.Unauthorized
-                    )
+    post("/valorar/{uid}") {
+        try {
+            val request = call.receive<Map<String, String>>()
 
-                val uidUsuarioValorado = call.parameters["uidUsuarioValorado"]
-                    ?: return@post call.respondText(
-                        "ID de usuario inválido",
-                        status = HttpStatusCode.BadRequest
-                    )
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            val uid = decodedToken.uid
 
-                try {
-                    val puntuacion = call.parameters["puntuacion"]?.toIntOrNull()
-                        ?: return@post call.respondText(
-                            "Puntuación inválida",
-                            status = HttpStatusCode.BadRequest
-                        )
+            val uidUsuarioValorado = call.parameters["uid"]
+                ?: return@post call.respondText(
+                    "UID de usuario inválido",
+                    status = HttpStatusCode.BadRequest
+                )
 
-                    val comentario = try {
-                        call.receive<String>()
-                    } catch (e: Exception) {
-                        null
-                    }
+            val valoracion =
+                request["valoracion"]?.toInt() ?: throw IllegalArgumentException("Valoración no proporcionada")
 
-                    val valoracion = ValoracionService.crearValoracion(
-                        uidUsuarioValorado = uidUsuarioValorado,
-                        uidUsuarioQueValora = uid,
-                        puntuacion = puntuacion,
-                        comentario = comentario
-                    )
-                    call.respond(valoracion)
-                } catch (e: Exception) {
-                    when (e) {
-                        is UnauthorizedException -> call.respondText(
-                            e.message ?: "No autorizado",
-                            status = HttpStatusCode.Unauthorized
-                        )
+            val comentario = request["comentario"] ?: ""
 
-                        is ValidationException -> call.respondText(
-                            e.message ?: "Error de validación",
-                            status = HttpStatusCode.BadRequest
-                        )
+            val valoracionCreada = ValoracionService.crearValoracion(
+                uidUsuarioValorado,
+                uid,
+                valoracion,
+                comentario
+            )
 
-                        else -> call.respondText(
-                            e.message ?: "Error al crear valoración",
-                            status = HttpStatusCode.InternalServerError
-                        )
-                    }
-                }
+            call.respond(
+                HttpStatusCode.OK,
+                "Valoracion creada correctamente: ${valoracionCreada.puntuacion} - $comentario"
+            )
 
-            }
+        } catch (e: Exception) {
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al crear la valoracion"
+                )
+            )
+        }
 
-            // Obtener valoraciones de un usuario
-            get("/usuarios/{uidUsuario}") {
-                val uidUsuario = call.parameters["uidUsuario"]
-                    ?: return@get call.respondText(
-                        "ID de usuario inválido",
-                        status = HttpStatusCode.BadRequest
-                    )
+    }
 
-                try {
-                    val valoraciones = ValoracionService.getValoracionesDeUsuario(uidUsuario)
-                    call.respond(valoraciones)
-                } catch (e: Exception) {
-                    call.respondText(
-                        e.message ?: "Error al obtener valoraciones",
-                        status = HttpStatusCode.InternalServerError
-                    )
-                }
+    // Obtener valoraciones de un usuario
+    get("/valoraciones/{uidUsuario}") {
+        try {
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            FirebaseAuth.getInstance().verifyIdToken(token)
 
-            }
+            val uidUsuario =
+                call.parameters["uidUsuario"] ?: throw IllegalArgumentException("UID de usuario no proporcionado")
 
-            // Añadir dentro del bloque authenticate
-            get("/usuarios/{uidUsuario}/promedio") {
-                val uidUsuario = call.parameters["uidUsuario"]
-                    ?: return@get call.respondText(
-                        "ID de usuario inválido",
-                        status = HttpStatusCode.BadRequest
-                    )
+            val valoraciones = getValoracionesDeUsuario(uidUsuario)
 
-                try {
-                    val promedio = ValoracionService.getValoracionPromedio(uidUsuario)
-                    call.respond(mapOf("promedio" to promedio))
-                } catch (e: Exception) {
-                    call.respondText(
-                        e.message ?: "Error al obtener el promedio",
-                        status = HttpStatusCode.InternalServerError
-                    )
-                }
-            }
+
+            val data = ValoracionesResponse(
+                "success",
+                valoraciones
+            )
+
+            call.respond(
+                HttpStatusCode.OK,
+                data
+            )
+
+        } catch (e: Exception) {
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al recoger las valoraciones"
+                )
+            )
+        }
+
+    }
+
+    get("/has-rated/{uidUsuario}") {
+        try {
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            val uid = decodedToken.uid
+
+            val uidUsuario =
+                call.parameters["uidUsuario"] ?: throw IllegalArgumentException("UID de usuario no proporcionado")
+
+            val hasRated = hasRatedUser(uid, uidUsuario)
+
+
+            val data = mapOf(
+                "status" to "success",
+                "message" to hasRated
+            )
+
+            call.respond(
+                HttpStatusCode.OK,
+                data
+            )
+
+        } catch (e: Exception) {
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al comprobar las valoraciones"
+                )
+            )
         }
     }
+
 }
