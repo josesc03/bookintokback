@@ -1,24 +1,20 @@
 package routes
 
-import UsuarioService
 import com.google.firebase.auth.FirebaseAuth
 import dto.BookRequest
 import dto.LibroResponse
 import dto.LibrosResponse
-import exceptions.NotFoundException
-import exceptions.UnauthorizedException
 import io.ktor.http.*
-import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import services.LibroService
 import utils.respondError
-import utils.respondSuccess
 
 fun Route.libroRoutes() {
     // recoger todos los libros
     get("/libro/allLibros") {
+        println("Iniciando endpoint GET /libro/allLibros")
         try {
             val authHeader =
                 call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
@@ -28,14 +24,16 @@ fun Route.libroRoutes() {
 
             // Recoger todos los posibles parámetros de filtro
             val filtros = mapOf(
-                "titulo" to call.parameters["titulo"],
-                "autor" to call.parameters["autor"],
-                "idioma" to call.parameters["idioma"],
-                "cubierta" to call.parameters["cubierta"],
-                "categoriaPrincipal" to call.parameters["categoriaPrincipal"],
-                "categoriaSecundaria" to call.parameters["categoriaSecundaria"],
-                "estado" to call.parameters["estado"]
+                "busqueda" to call.request.queryParameters["busqueda"],
+                "idioma" to call.request.queryParameters["idioma"],
+                "cubierta" to call.request.queryParameters["cubierta"],
+                "categoriaPrincipal" to call.request.queryParameters["categoriaPrincipal"],
+                "categoriaSecundaria" to call.request.queryParameters["categoriaSecundaria"],
+                "estado" to call.request.queryParameters["estado"],
+                "distancia" to call.request.queryParameters["distancia"],
             )
+
+            println(filtros)
 
             val libros = LibroService.getLibros(filtros, usuarioUid = decodedToken.uid)
             println(libros)
@@ -60,8 +58,9 @@ fun Route.libroRoutes() {
         }
     }
 
-    // recoger todos los libros
+    // recoger todos los libros de un usuario
     get("/libros/{uid}") {
+        println("Iniciando endpoint GET /libros/{uid}")
         try {
             val authHeader =
                 call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
@@ -98,6 +97,7 @@ fun Route.libroRoutes() {
 
     // recoger libro por id
     get("/libro/{id}") {
+        println("Iniciando endpoint GET /libro/{id}")
         try {
             val authHeader =
                 call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
@@ -134,7 +134,7 @@ fun Route.libroRoutes() {
 
     // crear libro
     post("/libro/crearLibro") {
-        println("Iniciando endpoint /libro/crearLibro")
+        println("Iniciando endpoint POST /libro/crearLibro")
         try {
             val authHeader =
                 call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
@@ -172,7 +172,7 @@ fun Route.libroRoutes() {
 
     // modificar libro
     post("/libro/actualizarLibro/{id}") {
-        println("Iniciando endpoint /libro/actualizarLibro/{id}")
+        println("Iniciando endpoint POST /libro/actualizarLibro/{id}")
         try {
             val authHeader =
                 call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
@@ -216,53 +216,41 @@ fun Route.libroRoutes() {
 
     // borrar libro
     delete("/libro/{id}") {
-        val libroId = call.parameters["id"]?.toIntOrNull()
-            ?: return@delete call.respondError(
+        println("Iniciando endpoint DELETE /libro/actualizarLibro/{id}")
+        try {
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            val uid = decodedToken.uid
+
+            val id = call.parameters["id"]?.toInt() ?: return@delete call.respondError(
                 "ID de libro inválido",
                 HttpStatusCode.BadRequest
             )
-
-        val uid = call.principal<UserIdPrincipal>()?.name
-            ?: return@delete call.respondError(
-                "No autenticado",
-                HttpStatusCode.Unauthorized
+            
+            LibroService.deleteLibro(
+                id = id,
+                uidUsuario = uid
             )
 
-        try {
-            val usuario = UsuarioService.getUserByUid(uid)
-                ?: return@delete call.respondError(
-                    "Usuario no encontrado",
-                    HttpStatusCode.NotFound
-                )
-
-            if (usuario.uid.equals(LibroService.getLibroById(libroId)?.uidUsuario)) {
-                return@delete call.respondError(
-                    "No tienes permiso para eliminar este libro",
-                    HttpStatusCode.Forbidden
-                )
-            }
-
-            LibroService.deleteLibro(libroId)
-
-            call.respondSuccess(
-                data = null,
-                message = "Libro eliminado exitosamente"
+            val data = mapOf(
+                "status" to "success",
+                "message" to "Libro eliminado correctamente"
             )
 
-        } catch (e: UnauthorizedException) {
-            call.respondError(
-                e.message ?: "No autorizado",
-                HttpStatusCode.Forbidden
+            call.respond(
+                HttpStatusCode.OK,
+                data
             )
-        } catch (e: NotFoundException) {
-            call.respondError(
-                e.message ?: "Libro no encontrado",
-                HttpStatusCode.NotFound
-            )
+
         } catch (e: Exception) {
-            call.respondError(
-                "Error al eliminar el libro: ${e.message}",
-                HttpStatusCode.InternalServerError
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al eliminar el libro: ${e.message}"
+                )
             )
         }
     }

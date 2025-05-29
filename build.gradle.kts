@@ -28,17 +28,27 @@ repositories {
 dependencies {
     implementation("io.ktor:ktor-server-netty:2.3.4")
     implementation("io.ktor:ktor-server-core:2.3.4")
-    implementation("io.ktor:ktor-server-auth:2.3.4") // Para autenticación
+    implementation("io.ktor:ktor-server-cors:3.1.2")
+
+    // Para autenticación
+    implementation("io.ktor:ktor-server-auth:2.3.4")
     implementation("io.ktor:ktor-server-auth-jwt:2.3.4")
     implementation("com.google.firebase:firebase-admin:9.4.3")
-    implementation("io.ktor:ktor-server-content-negotiation:2.3.4") // Para JSON
+
+    // Para JSON
+    implementation("io.ktor:ktor-server-content-negotiation:2.3.4")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.4")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
-    implementation("org.jetbrains.exposed:exposed-core:0.41.1") // Para base de datos
+
+    // Para base de datos
+    implementation("org.jetbrains.exposed:exposed-core:0.41.1")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.41.1")
     implementation("org.jetbrains.exposed:exposed-dao:0.41.1")
     implementation("org.jetbrains.exposed:exposed-java-time:0.41.1")
-    implementation("mysql:mysql-connector-java:8.0.28") // Conector de MySQL
+    implementation("mysql:mysql-connector-java:8.0.28")
+
     implementation("ch.qos.logback:logback-classic:1.5.13")
-    implementation("io.ktor:ktor-server-cors:3.1.2")
+
+    // Dependencia para websockets
+    implementation("io.ktor:ktor-server-websockets:2.3.9")
 }

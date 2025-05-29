@@ -119,9 +119,23 @@ object LibroService {
         }
     }
 
-    fun deleteLibro(id: Int) {
-        transaction {
-            LibroTable.deleteWhere { LibroTable.id eq id }
+    fun deleteLibro(id: Int, uidUsuario: String): Boolean {
+        return try {
+            transaction {
+                val libroExiste = LibroTable
+                    .select { (LibroTable.id eq id) and (LibroTable.uidUsuario eq uidUsuario) }
+                    .count() > 0
+
+                if (!libroExiste) {
+                    throw UnauthorizedException("No tienes permiso para eliminar este libro")
+                }
+
+                val filasEliminadas = LibroTable.deleteWhere { LibroTable.id eq id }
+                filasEliminadas > 0
+            }
+        } catch (e: Exception) {
+            println("Error al eliminar libro: ${e.message}")
+            false
         }
     }
 
