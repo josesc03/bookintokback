@@ -5,15 +5,17 @@ val logback_version: String by project
 
 plugins {
     kotlin("jvm") version "2.1.10"
-    id("io.ktor.plugin") version "3.1.2"
+    //id("io.ktor.plugin") version "3.1.2"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.1.10"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+    application
 }
 
 group = "com.bookintok"
-version = "0.0.1"
+version = "1.0.0"
 
 application {
-    mainClass = "io.ktor.server.netty.EngineMain"
+    mainClass.set("io.ktor.server.netty.EngineMain")
 
     val isDevelopment: Boolean = project.ext.has("development")
     applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
@@ -23,6 +25,7 @@ repositories {
     mavenCentral()
     google()
     maven("https://jitpack.io")
+    gradlePluginPortal()
 }
 
 dependencies {
@@ -51,4 +54,25 @@ dependencies {
 
     // Dependencia para websockets
     implementation("io.ktor:ktor-server-websockets:2.3.9")
+}
+
+
+tasks {
+    named<Jar>("jar") {
+        enabled = false
+    }
+
+    named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
+        archiveBaseName.set("bookintok-backend")
+        archiveClassifier.set("")
+        archiveVersion.set("")
+        manifest {
+            attributes(mapOf("Main-Class" to "io.ktor.server.netty.EngineMain"))
+        }
+        mergeServiceFiles()
+    }
+
+    build {
+        dependsOn(shadowJar)
+    }
 }
