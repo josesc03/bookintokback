@@ -31,14 +31,16 @@ object UsuarioService {
     }
 
 
-    fun updateUser(uid: String, imagenUrl: String, nombre: String): Usuario? {
+    fun updateUser(uid: String, imagenUrl: String?, nombre: String?): Usuario? {
         return transaction {
             UsuarioTable.select {
                 (UsuarioTable.uid eq uid) and (UsuarioTable.uid eq uid)
             }.singleOrNull() ?: return@transaction null
 
             val updateStatement = UsuarioTable.update({ UsuarioTable.uid eq uid }) { table ->
-                table[UsuarioTable.nombre] = nombre
+                if (nombre != null) {
+                    table[UsuarioTable.nombre] = nombre
+                }
                 table[UsuarioTable.imagenUrl] = imagenUrl
             }
 

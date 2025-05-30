@@ -405,8 +405,10 @@ fun Route.usuarioRoutes() {
             val uid = decodedToken.uid
 
             val request = call.receive<Map<String, String>>()
-            val imageUrl = request["imageUrl"] ?: throw IllegalArgumentException("URL de imagen no proporcionada")
-            val nombre = request["nombre"] ?: throw IllegalArgumentException("Nombre no proporcionado")
+            val imageUrl = request["imageUrl"]
+            val nombre = request["nombre"]
+
+            println(request)
 
             UsuarioService.updateUser(uid, imageUrl, nombre)
                 ?: return@post call.respondError(
