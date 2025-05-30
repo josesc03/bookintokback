@@ -221,14 +221,10 @@ fun Route.usuarioRoutes() {
                 )
             }
 
-            val nombre = UsuarioService.getUserByUid(userUid!!)?.nombre
+            val nombre = UsuarioService.getUserByUid(userUid)?.nombre
 
             call.respond(
-                HttpStatusCode.OK,
-                mapOf(
-                    "status" to "success",
-                    "message" to nombre
-                )
+                HttpStatusCode.OK, nombre.toString()
             )
         } catch (e: Exception) {
             call.respond(
@@ -240,5 +236,210 @@ fun Route.usuarioRoutes() {
             )
         }
     }
+
+    get("/has-completed-exchange/{userUid}") {
+        println("Iniciando endpoint /has-completed-exchange/{userUid}")
+        try {
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            val tokenUid = decodedToken.uid
+
+            val userUid = call.parameters["userUid"] ?: return@get call.respondError(
+                "ID de usuario inválido",
+                HttpStatusCode.BadRequest
+            )
+
+            val hasExchanged = UsuarioService.hasCompletedExchange(tokenUid, userUid)
+
+            call.respond(
+                HttpStatusCode.OK, hasExchanged
+            )
+        } catch (e: IllegalArgumentException) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf(
+                    "status" to "error",
+                    "message" to (e.message ?: "Error en los datos proporcionados")
+                )
+            )
+        } catch (e: Exception) {
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al verificar el intercambio\n${e.message}"
+                )
+            )
+        }
+    }
+
+    get("/has-rated/{userUid}") {
+        println("Iniciando endpoint /has-rated/{userUid}")
+        try {
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            val tokenUid = decodedToken.uid
+
+            val userUid = call.parameters["userUid"] ?: return@get call.respondError(
+                "ID de usuario inválido",
+                HttpStatusCode.BadRequest
+            )
+
+            val hasRated = UsuarioService.hasRated(tokenUid, userUid)
+
+            call.respond(
+                HttpStatusCode.OK, hasRated
+            )
+        } catch (e: IllegalArgumentException) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf(
+                    "status" to "error",
+                    "message" to (e.message ?: "Error en los datos proporcionados")
+                )
+            )
+        } catch (e: Exception) {
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al verificar la valoración\n${e.message}"
+                )
+            )
+        }
+    }
+
+    post("/usuario/valorar/{uidUsuario}") {
+        println("Iniciando endpoint /usuario/valorar/{uidUsuario}")
+        try {
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            val tokenUid = decodedToken.uid
+
+            val userUid = call.parameters["uidUsuario"] ?: return@post call.respondError(
+                "ID de usuario inválido",
+                HttpStatusCode.BadRequest
+            )
+            val request = call.receive<Map<String, String>>()
+            val puntuacion = request["puntuacion"] as String
+            val comentario = request["comentario"] as String
+            UsuarioService.valorarUsuario(tokenUid, userUid, comentario, puntuacion.toInt())
+            call.respond(
+                HttpStatusCode.OK,
+                mapOf(
+                    "status" to "success",
+                    "message" to "Usuario valorado correctamente"
+                )
+            )
+        } catch (e: IllegalArgumentException) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf(
+                    "status" to "error",
+                    "message" to (e.message ?: "Error en los datos proporcionados")
+                )
+            )
+        } catch (e: Exception) {
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al valorar el usuario\n${e.message}"
+                )
+            )
+        }
+    }
+
+    get("/usuario/valoraciones/{uid}") {
+        println("Iniciando endpoint /usuario/valoraciones/{uid}")
+        try {
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            decodedToken.uid
+
+            val uid = call.parameters["uid"] ?: return@get call.respondError(
+                "ID de usuario inválido",
+                HttpStatusCode.BadRequest
+            )
+
+            val valoraciones = UsuarioService.getValoracionesFromUid(uid)
+
+            call.respond(
+                HttpStatusCode.OK,
+                valoraciones
+            )
+        } catch (e: IllegalArgumentException) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf(
+                    "status" to "error",
+                    "message" to (e.message ?: "Error en los datos proporcionados")
+                )
+            )
+        } catch (e: Exception) {
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al obtener las valoraciones\n${e.message}"
+                )
+            )
+        }
+    }
+
+    post("/usuario/update") {
+        println("Iniciando endpoint POST /usuario/update")
+        try {
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            val uid = decodedToken.uid
+
+            val request = call.receive<Map<String, String>>()
+            val imageUrl = request["imageUrl"] ?: throw IllegalArgumentException("URL de imagen no proporcionada")
+            val nombre = request["nombre"] ?: throw IllegalArgumentException("Nombre no proporcionado")
+
+            UsuarioService.updateUser(uid, imageUrl, nombre)
+                ?: return@post call.respondError(
+                    "No se pudo actualizar el usuario",
+                    HttpStatusCode.NotFound
+                )
+
+            call.respond(
+                HttpStatusCode.OK,
+                mapOf(
+                    "status" to "success",
+                    "message" to "Usuario actualizado correctamente"
+                )
+            )
+
+        } catch (e: IllegalArgumentException) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf(
+                    "status" to "error",
+                    "message" to (e.message ?: "Error en los datos proporcionados")
+                )
+            )
+        } catch (e: Exception) {
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al actualizar el usuario\n${e.message}"
+                )
+            )
+        }
+    }
+
 
 }

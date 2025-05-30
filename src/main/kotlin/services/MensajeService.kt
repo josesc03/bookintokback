@@ -1,9 +1,8 @@
 package services
 
+import dto.MessageInfo
 import exceptions.UnauthorizedException
-import io.ktor.server.plugins.*
 import models.EstadoIntercambio
-import models.Mensaje
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.or
@@ -16,11 +15,11 @@ import java.time.Instant
 import kotlin.time.ExperimentalTime
 
 object MensajeService {
-    fun enviarMensaje(
+    fun sendMessage(
         chatId: Int,
         uidRemitente: String,
         contenido: String
-    ): Mensaje {
+    ) {
         return transaction {
             val chatExiste = ChatTable
                 .select {
@@ -48,25 +47,20 @@ object MensajeService {
                 throw IllegalStateException("No se pueden enviar mensajes en un chat inactivo")
             }
 
-            val idMensaje = MensajeTable.insert {
+            MensajeTable.insert {
                 it[MensajeTable.idChat] = chatId
                 it[MensajeTable.uidRemitente] = uidRemitente
                 it[MensajeTable.contenido] = contenido
             } get MensajeTable.id
-
-            getMensajeById(idMensaje)
-                ?: throw NotFoundException("Error al crear el mensaje")
         }
     }
 
     @OptIn(ExperimentalTime::class)
-    fun getMensajes(chatId: Int, uidUsuario: String): List<Mensaje> {
+    fun getMensajes(chatId: Int): List<MessageInfo> {
         return transaction {
             val chatExiste = ChatTable
                 .select {
-                    (ChatTable.id eq chatId) and
-                            ((ChatTable.uidUsuarioOfertante eq uidUsuario) or
-                                    (ChatTable.uidUsuarioInteresado eq uidUsuario.toString()))
+                    (ChatTable.id eq chatId)
                 }
                 .count() > 0
 
@@ -78,32 +72,12 @@ object MensajeService {
                 .select { MensajeTable.idChat eq chatId }
                 .orderBy(MensajeTable.timestamp)
                 .map { row ->
-                    Mensaje(
-                        id = row[MensajeTable.id],
-                        idChat = row[MensajeTable.idChat],
-                        idRemitente = row[MensajeTable.uidRemitente],
+                    MessageInfo(
+                        id_usuario_emisor = row[MensajeTable.uidRemitente],
                         contenido = row[MensajeTable.contenido],
                         timestamp = Instant.parse(row[MensajeTable.timestamp].toString())
                     )
                 }
-        }
-    }
-
-    @OptIn(ExperimentalTime::class)
-    private fun getMensajeById(id: Int): Mensaje? {
-        return transaction {
-            MensajeTable
-                .select { MensajeTable.id eq id }
-                .map { row ->
-                    Mensaje(
-                        id = row[MensajeTable.id],
-                        idChat = row[MensajeTable.idChat],
-                        idRemitente = row[MensajeTable.uidRemitente],
-                        contenido = row[MensajeTable.contenido],
-                        timestamp = Instant.parse(row[MensajeTable.timestamp].toString())
-                    )
-                }
-                .singleOrNull()
         }
     }
 }

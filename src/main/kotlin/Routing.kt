@@ -7,7 +7,10 @@ import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import routes.*
+import routes.chatRoute
+import routes.libroRoutes
+import routes.mensajeRoutes
+import routes.usuarioRoutes
 import utils.respondSuccess
 
 fun Application.configureRouting() {
@@ -46,8 +49,7 @@ fun Application.configureRouting() {
         usuarioRoutes()
         libroRoutes()
         mensajeRoutes()
-        chatIntercambioRoutes()
-        valoracionRoutes()
+        chatRoute()
 
         print("\u001B[38;2;152;246;160mRutas importadas con exito\u001B[0m\n\n")
     }

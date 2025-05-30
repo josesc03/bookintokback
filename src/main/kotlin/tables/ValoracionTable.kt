@@ -1,7 +1,8 @@
 package tables
 
 import org.jetbrains.exposed.sql.Table
-import org.jetbrains.exposed.sql.javatime.datetime
+import org.jetbrains.exposed.sql.javatime.timestamp
+import java.time.Instant
 
 object ValoracionTable : Table("valoracion") {
     val id = integer("id").autoIncrement()
@@ -9,7 +10,7 @@ object ValoracionTable : Table("valoracion") {
     val uidUsuarioQueValora = varchar("uid_usuario_que_valora", 255).references(UsuarioTable.uid)
     val puntuacion = integer("puntuacion")
     val comentario = text("comentario").nullable()
-    val fechaValoracion = datetime("fecha_valoracion")
+    val fechaValoracion = timestamp("fecha_valoracion").clientDefault { Instant.now() }
 
     override val primaryKey = PrimaryKey(id)
 

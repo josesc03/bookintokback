@@ -1,10 +1,13 @@
+import dto.ValoracionesResponse
+import models.EstadoIntercambio
 import models.Usuario
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
+import models.Valoracion
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import tables.ChatTable
+import tables.IntercambioTable
 import tables.UsuarioTable
+import tables.ValoracionTable
 import java.time.Instant
 import kotlin.time.ExperimentalTime
 
@@ -28,26 +31,19 @@ object UsuarioService {
     }
 
 
-    fun updateUser(uid: String, updateData: Map<String, Any?>): Usuario? {
+    fun updateUser(uid: String, imagenUrl: String, nombre: String): Usuario? {
         return transaction {
-            // Verificar que el usuario existe y pertenece al usuario autenticado
             UsuarioTable.select {
                 (UsuarioTable.uid eq uid) and (UsuarioTable.uid eq uid)
             }.singleOrNull() ?: return@transaction null
 
-            // Preparar la actualización
             val updateStatement = UsuarioTable.update({ UsuarioTable.uid eq uid }) { table ->
-                updateData.forEach { (key, value) ->
-                    when (key) {
-                        "nickname" -> table[nickname] = value as String
-                        "nombre" -> table[nombre] = value as String
-                        "urlImage" -> table[imagenUrl] = value as? String
-                    }
-                }
+                table[UsuarioTable.nombre] = nombre
+                table[UsuarioTable.imagenUrl] = imagenUrl
             }
 
             if (updateStatement > 0) {
-                getUserByUid(id)
+                getUserByUid(uid)
             } else {
                 null
             }
@@ -70,11 +66,11 @@ object UsuarioService {
     }
 
     @OptIn(ExperimentalTime::class)
-    fun getUserByUid(uid: String): Usuario? {
+    fun getUserByUid(uid: String?): Usuario? {
         println("Iniciando sesion con UID")
         return try {
             transaction {
-                UsuarioTable.select { UsuarioTable.uid eq uid }
+                UsuarioTable.select { UsuarioTable.uid eq uid.toString() }
                     .singleOrNull()
                     ?.let { row ->
                         Usuario(
@@ -118,6 +114,78 @@ object UsuarioService {
         } catch (e: Exception) {
             println("Error al buscar usuario por email: ${e.message}")
             null
+        }
+    }
+
+    fun hasCompletedExchange(uid: String, uid2: String): Boolean {
+        return transaction {
+            ChatTable
+                .innerJoin(IntercambioTable)
+                .select {
+                    (((ChatTable.uidUsuarioOfertante eq uid) and (ChatTable.uidUsuarioInteresado eq uid2)) or
+                            ((ChatTable.uidUsuarioOfertante eq uid2) and (ChatTable.uidUsuarioInteresado eq uid))) and
+                            (IntercambioTable.idChat eq ChatTable.id) and
+                            (IntercambioTable.estado eq EstadoIntercambio.COMPLETADO)
+                }
+                .count() > 0
+        }
+    }
+
+    fun hasRated(uid: String, uid_valorado: String): Boolean {
+        return transaction {
+            ValoracionTable
+                .select {
+                    (ValoracionTable.uidUsuarioQueValora eq uid) and
+                            (ValoracionTable.uidUsuarioValorado eq uid_valorado)
+                }
+                .count() > 0
+        }
+    }
+
+    fun valorarUsuario(uid: String, uid_valorado: String, comentario: String?, puntuacion: Int): Boolean {
+        return transaction {
+            if (hasCompletedExchange(uid, uid_valorado) && !hasRated(uid, uid_valorado)) {
+                ValoracionTable.insert {
+                    it[uidUsuarioQueValora] = uid
+                    it[uidUsuarioValorado] = uid_valorado
+                    it[ValoracionTable.puntuacion] = puntuacion
+                    it[ValoracionTable.comentario] = comentario
+                }
+
+                val promedio = ValoracionTable
+                    .select { ValoracionTable.uidUsuarioValorado eq uid_valorado }
+                    .count()
+                    .toBigDecimal()
+
+                UsuarioTable.update({ UsuarioTable.uid eq uid_valorado }) {
+                    it[valoracionPromedio] = promedio
+                }
+
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    fun getValoracionesFromUid(uid: String): ValoracionesResponse {
+        return transaction {
+            val valoraciones = ValoracionTable
+                .select { ValoracionTable.uidUsuarioValorado eq uid }
+                .map { row ->
+                    Valoracion(
+                        id = row[ValoracionTable.id],
+                        uidUsuarioQueValora = row[ValoracionTable.uidUsuarioQueValora],
+                        uidUsuarioValorado = row[ValoracionTable.uidUsuarioValorado],
+                        comentario = row[ValoracionTable.comentario],
+                        puntuacion = row[ValoracionTable.puntuacion],
+                        fechaValoracion = Instant.parse(row[ValoracionTable.fechaValoracion].toString()),
+                    )
+                }
+            ValoracionesResponse(
+                status = "success",
+                valoraciones = valoraciones
+            )
         }
     }
 }

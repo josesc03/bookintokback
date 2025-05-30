@@ -2,6 +2,7 @@ package routes
 
 import com.google.firebase.auth.FirebaseAuth
 import dto.BookRequest
+import dto.LibroInfoResponse
 import dto.LibroResponse
 import dto.LibrosResponse
 import io.ktor.http.*
@@ -58,6 +59,42 @@ fun Route.libroRoutes() {
         }
     }
 
+    get("/libro/{idLibro}") {
+        println("Iniciando endpoint GET /libro/{idLibro}")
+        try {
+            val authHeader =
+                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
+            val token = authHeader.removePrefix("Bearer ").trim()
+            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
+            decodedToken.uid
+
+            val idLibro = call.parameters["idLibro"]?.toInt() ?: return@get call.respondError(
+                "ID de libro inválido",
+                HttpStatusCode.BadRequest
+            )
+
+            val libro = LibroService.getLibroById(idLibro)
+
+            val data = LibroResponse(
+                "success",
+                libro
+            )
+
+            call.respond(
+                HttpStatusCode.OK,
+                data
+            )
+        } catch (e: Exception) {
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf(
+                    "status" to "error",
+                    "message" to "Error al obtener el libro\n${e.message}"
+                )
+            )
+        }
+    }
+
     // recoger todos los libros de un usuario
     get("/libros/{uid}") {
         println("Iniciando endpoint GET /libros/{uid}")
@@ -73,48 +110,11 @@ fun Route.libroRoutes() {
                 HttpStatusCode.BadRequest
             )
 
-            val libros = LibroService.getLibrosByUid(uid)
+            val libroInfo = LibroService.getLibrosByUid(uid)
 
-            val data = LibrosResponse(
+            val data = LibroInfoResponse(
                 "success",
-                libros
-            )
-
-            call.respond(
-                HttpStatusCode.OK,
-                data
-            )
-        } catch (e: Exception) {
-            call.respond(
-                HttpStatusCode.InternalServerError,
-                mapOf(
-                    "status" to "error",
-                    "message" to "Error al obtener los libros\n${e.message}"
-                )
-            )
-        }
-    }
-
-    // recoger libro por id
-    get("/libro/{id}") {
-        println("Iniciando endpoint GET /libro/{id}")
-        try {
-            val authHeader =
-                call.request.headers["Authorization"] ?: throw IllegalArgumentException("Token no proporcionado")
-            val token = authHeader.removePrefix("Bearer ").trim()
-            val decodedToken = FirebaseAuth.getInstance().verifyIdToken(token)
-            decodedToken.uid
-
-            val id = call.parameters["id"]?.toInt() ?: return@get call.respondError(
-                "ID de usuario inválido",
-                HttpStatusCode.BadRequest
-            )
-
-            var libro = LibroService.getLibroById(id)
-
-            val data = LibroResponse(
-                "success",
-                libro
+                libroInfo
             )
 
             call.respond(
@@ -228,7 +228,7 @@ fun Route.libroRoutes() {
                 "ID de libro inválido",
                 HttpStatusCode.BadRequest
             )
-            
+
             LibroService.deleteLibro(
                 id = id,
                 uidUsuario = uid

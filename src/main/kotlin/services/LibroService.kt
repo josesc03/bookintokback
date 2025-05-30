@@ -1,14 +1,18 @@
 package services
 
 import dto.BookRequest
+import dto.LibroInfo
 import exceptions.NotFoundException
 import exceptions.UnauthorizedException
+import models.EstadoIntercambio
 import models.EstadoLibro
 import models.Libro
 import models.TipoCubierta
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
+import tables.ChatTable
+import tables.IntercambioTable
 import tables.LibroTable
 import tables.UsuarioTable
 import java.time.Instant
@@ -95,27 +99,23 @@ object LibroService {
         }
     }
 
-    @OptIn(ExperimentalTime::class)
-    fun getLibrosByUid(uid: String): List<Libro> {
+    fun getLibrosByUid(uid: String): List<LibroInfo> {
         return transaction {
             LibroTable
+                .leftJoin(ChatTable, { LibroTable.id }, { ChatTable.idLibro })
+                .leftJoin(IntercambioTable, { ChatTable.id }, { IntercambioTable.idChat })
+                .slice(LibroTable.columns + IntercambioTable.estado)
                 .select { LibroTable.uidUsuario eq uid }
-                .mapNotNull { row ->
-                    Libro(
-                        id = row[LibroTable.id],
-                        uidUsuario = row[LibroTable.uidUsuario],
+                .map { row ->
+                    LibroInfo(
+                        id = row[LibroTable.id].toString(),
                         titulo = row[LibroTable.titulo],
                         autor = row[LibroTable.autor],
-                        idioma = row[LibroTable.idioma],
-                        cubierta = row[LibroTable.cubierta],
-                        categoriaPrincipal = row[LibroTable.categoriaPrincipal],
-                        categoriaSecundaria = row[LibroTable.categoriaSecundaria],
-                        estado = row[LibroTable.estado],
-                        imagenUrl = row[LibroTable.imagenUrl],
-                        fechaPublicacion = Instant.parse(row[LibroTable.fechaPublicacion].toString()),
-                        descripcion = row[LibroTable.descripcion]
+                        url = row[LibroTable.imagenUrl],
+                        isCompleted = row[IntercambioTable.estado] == EstadoIntercambio.COMPLETADO
                     )
                 }
+                .distinctBy { it.id }
         }
     }
 
@@ -222,6 +222,16 @@ object LibroService {
             }
 
             query = query.andWhere { LibroTable.uidUsuario neq usuarioUid }
+
+            val librosConIntercambioCompletado = ChatTable.slice(ChatTable.idLibro)
+                .select {
+                    ChatTable.id inSubQuery (
+                            IntercambioTable.slice(IntercambioTable.idChat)
+                                .select { IntercambioTable.estado eq EstadoIntercambio.COMPLETADO }
+                            )
+                }
+
+            query = query.andWhere { LibroTable.id notInSubQuery librosConIntercambioCompletado }
 
             query.map { row ->
                 Libro(
